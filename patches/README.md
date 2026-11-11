@@ -16,3 +16,10 @@ upstream as parity fixes.
 3. Self loops: add near-corner support points so the curve does not cut into its own node.
 
 The patch file is kept for provenance; it is already applied to the sources on this branch.
+
+## Submodules removed on this branch
+
+`.gitmodules` and the four `external/*` submodules are removed on `nebula`. Cargo fetches every
+submodule of a git dependency, which added about 170 MB and four third-party repositories to each
+consumer's first build. Tests that read fixtures from `external/` therefore fail on this branch;
+run them on `main` with the submodules checked out.
