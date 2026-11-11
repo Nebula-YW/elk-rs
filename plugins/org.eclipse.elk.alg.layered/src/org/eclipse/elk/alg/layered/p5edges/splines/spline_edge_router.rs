@@ -93,7 +93,7 @@ static NORTH_SOUTH_PORT_PROCESSING_ADDITIONS: LazyLock<
             LayeredPhases::P3NodeOrdering,
             Arc::new(IntermediateProcessorStrategy::NorthSouthPortPreprocessor),
         )
-        .add_before(
+        .add_after(
             LayeredPhases::P5EdgeRouting,
             Arc::new(IntermediateProcessorStrategy::NorthSouthPortPostprocessor),
         );

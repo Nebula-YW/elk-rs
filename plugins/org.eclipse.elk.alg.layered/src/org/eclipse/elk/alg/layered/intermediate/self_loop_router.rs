@@ -15,7 +15,7 @@ use crate::org::eclipse::elk::alg::layered::intermediate::loops::{
     Alignment, PolylineSelfLoopRouter, SelfHyperLoopRef, SelfLoopEdgeRef, SelfLoopHolderRef,
 };
 use crate::org::eclipse::elk::alg::layered::options::{InternalProperties, LayeredOptions};
-use crate::org::eclipse::elk::alg::layered::p5edges::splines::{NubSpline, SplinesMath};
+use crate::org::eclipse::elk::alg::layered::intermediate::self_loop_spline::spline_control_points;
 use org_eclipse_elk_core::org::eclipse::elk::core::util::elk_trace::ElkTrace;
 
 const EPSILON: f64 = 1e-3;
@@ -197,8 +197,7 @@ fn route_node(
                 &source_port,
                 &target_port,
                 path,
-                source_point.side,
-                clockwise,
+                (source_point.side, clockwise, node_size),
                 edge_label_distance,
             );
 
@@ -393,10 +392,10 @@ fn modify_bend_points(
     source_port: &LPortRef,
     target_port: &LPortRef,
     bend_points: Vec<KVector>,
-    source_side: PortSide,
-    clockwise: bool,
+    loop_geometry: (PortSide, bool, KVector),
     edge_label_distance: f64,
 ) -> Vec<KVector> {
+    let (source_side, clockwise, node_size) = loop_geometry;
     match edge_routing {
         EdgeRouting::Polyline => {
             let mut chain = KVectorChain::new();
@@ -412,40 +411,16 @@ fn modify_bend_points(
             let source_anchor = local_port_anchor(source_port);
             let target_anchor = local_port_anchor(target_port);
 
-            let mut spline_points = KVectorChain::new();
-            spline_points.add_vector(source_anchor);
+            spline_control_points(
+                source_anchor,
+                target_anchor,
+                &bend_points,
+                source_side,
+                clockwise,
+                edge_label_distance,
+                node_size,
+            )
 
-            if bend_points.len() >= 2 {
-                let mut curr_side = source_side;
-
-                for window in bend_points.windows(2) {
-                    let first_bp = &window[0];
-                    let second_bp = &window[1];
-
-                    spline_points.add_vector(*first_bp);
-
-                    // Compute midpoint offset away from node
-                    let direction = SplinesMath::port_side_to_direction(curr_side);
-                    let mid = KVector::with_values(
-                        (first_bp.x + second_bp.x) * 0.5 + direction.cos() * edge_label_distance,
-                        (first_bp.y + second_bp.y) * 0.5 + direction.sin() * edge_label_distance,
-                    );
-                    spline_points.add_vector(mid);
-
-                    curr_side = if clockwise {
-                        curr_side.right()
-                    } else {
-                        curr_side.left()
-                    };
-                }
-
-                spline_points.add_vector(*bend_points.last().unwrap());
-            }
-
-            spline_points.add_vector(target_anchor);
-
-            let mut nub = NubSpline::new(true, 3, spline_points);
-            nub.get_bezier_cp_default().to_array()
         }
         _ => bend_points,
     }

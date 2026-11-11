@@ -1,4 +1,5 @@
 #![allow(clippy::mutable_key_type)]
+mod spline_chain;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -1639,6 +1640,9 @@ impl CompoundGraphPostprocessor {
             }
 
             let mut last_point: Option<KVector> = None;
+            let spline = reference_graph.lock().get_property(CoreOptions::EDGE_ROUTING)
+                == Some(org_eclipse_elk_core::org::eclipse::elk::core::options::edge_routing::EdgeRouting::Splines);
+            let mut spline_points = KVectorChain::new();
 
             for cross_edge in &cross_edges {
                 let mut offset = KVector::new();
@@ -1667,7 +1671,9 @@ impl CompoundGraphPostprocessor {
                     (bend_points, source_point, target_point)
                 };
 
-                if let Some(last_point) = last_point {
+                if spline {
+                    spline_chain::append(&mut spline_points, last_point, source_point, &bend_points, target_point);
+                } else if let Some(last_point) = last_point {
                     let next_point = if bend_points.is_empty() {
                         target_point
                     } else {
@@ -1696,7 +1702,9 @@ impl CompoundGraphPostprocessor {
                     edge_guard.bend_points().add_all(&bend_points.to_array());
                 }
 
-                last_point = if bend_points.is_empty() {
+                last_point = if spline {
+                    Some(target_point)
+                } else if bend_points.is_empty() {
                     Some(source_point)
                 } else {
                     Some(bend_points.get_last())
@@ -1735,6 +1743,12 @@ impl CompoundGraphPostprocessor {
                 let edge_key = Arc::as_ptr(&ledge) as usize;
                 if seen_edges.insert(edge_key) {
                     dummy_edges.push(ledge);
+                }
+            }
+            if spline {
+                let points = spline_points.to_array();
+                if !points.is_empty() {
+                    orig_edge.lock().bend_points().add_all(&points[..points.len()-1]);
                 }
             }
 

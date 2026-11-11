@@ -118,3 +118,5 @@ pub use self_loop_router::SelfLoopRouter;
 pub use semi_interactive_cross_min_processor::SemiInteractiveCrossMinProcessor;
 pub use single_edge_graph_wrapper::SingleEdgeGraphWrapper;
 pub use sort_by_input_model_processor::SortByInputModelProcessor;
+
+mod self_loop_spline;
